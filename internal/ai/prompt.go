@@ -225,3 +225,32 @@ func generateDefaultPrompt(opt options) string {
 
 	return b.String()
 }
+
+// CleanResponse removes wrapping quotes, backticks, and code blocks from AI response
+func CleanResponse(response string) string {
+	response = strings.TrimSpace(response)
+
+	// Remove wrapping backticks (```)
+	if strings.HasPrefix(response, "```") && strings.HasSuffix(response, "```") {
+		lines := strings.Split(response, "\n")
+		if len(lines) > 1 {
+			// Remove first line (``` or ```language) and last line (```)
+			response = strings.Join(lines[1:len(lines)-1], "\n")
+		} else {
+			// Single line with backticks, remove them
+			response = response[3 : len(response)-3]
+		}
+		response = strings.TrimSpace(response)
+	}
+
+	// Remove wrapping quotes
+	if (strings.HasPrefix(response, "\"") && strings.HasSuffix(response, "\"")) ||
+		(strings.HasPrefix(response, "'") && strings.HasSuffix(response, "'")) {
+		response = response[1 : len(response)-1]
+	}
+
+	// Remove any remaining leading/trailing whitespace
+	response = strings.TrimSpace(response)
+
+	return response
+}

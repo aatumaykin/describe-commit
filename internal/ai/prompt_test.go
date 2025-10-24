@@ -110,3 +110,58 @@ func TestGeneratePrompt(t *testing.T) {
 		})
 	}
 }
+
+func TestCleanResponse(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		give string
+		want string
+	}{
+		"no wrapping": {
+			give: "feat: add new feature",
+			want: "feat: add new feature",
+		},
+		"double quotes": {
+			give: "\"feat: add new feature\"",
+			want: "feat: add new feature",
+		},
+		"single quotes": {
+			give: "'feat: add new feature'",
+			want: "feat: add new feature",
+		},
+		"backticks": {
+			give: "```feat: add new feature```",
+			want: "feat: add new feature",
+		},
+		"backticks with newlines": {
+			give: "```\nfeat: add new feature\n```",
+			want: "feat: add new feature",
+		},
+		"backticks with language": {
+			give: "```text\nfeat: add new feature\n```",
+			want: "feat: add new feature",
+		},
+		"nested quotes": {
+			give: "\"```feat: add new feature```\"",
+			want: "```feat: add new feature```",
+		},
+		"whitespace": {
+			give: "  feat: add new feature  ",
+			want: "feat: add new feature",
+		},
+		"complex message": {
+			give: "```\nfeat(api): add rate limiting\n\n- Implement Redis-based rate limiting\n- Add configuration options\n```",
+			want: "feat(api): add rate limiting\n\n- Implement Redis-based rate limiting\n- Add configuration options",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := ai.CleanResponse(tc.give)
+			if got != tc.want {
+				t.Errorf("CleanResponse(%q) = %q, want %q", tc.give, got, tc.want)
+			}
+		})
+	}
+}

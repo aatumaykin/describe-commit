@@ -204,5 +204,6 @@ func (p *Anthropic) parseResponse(resp *http.Response) (string, error) {
 		}
 	}
 
-	return strings.Trim(strings.Join(texts, "\n"), "\n\t "), nil
+	response := strings.Trim(strings.Join(texts, "\n"), "\n\t ")
+	return CleanResponse(response), nil
 }
