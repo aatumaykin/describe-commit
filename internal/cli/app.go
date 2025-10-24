@@ -304,6 +304,20 @@ func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funle
 		return fmt.Errorf("unsupported AI provider: %s", a.opt.AIProviderName)
 	}
 
+	// Выводим информацию о модели в debug
+	var modelName string
+	switch a.opt.AIProviderName {
+	case ai.ProviderGemini:
+		modelName = a.opt.Providers.Gemini.ModelName
+	case ai.ProviderOpenAI:
+		modelName = a.opt.Providers.OpenAI.ModelName
+	case ai.ProviderOpenRouter:
+		modelName = a.opt.Providers.OpenRouter.ModelName
+	case ai.ProviderAnthropic:
+		modelName = a.opt.Providers.Anthropic.ModelName
+	}
+	debug.DebugHeaderColorPrintf("AI model: %s", modelName)
+
 	debug.DebugHeaderColorPrintf("working directory: %s", workingDir)
 
 	var (
@@ -369,10 +383,14 @@ func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funle
 
 	if a.opt.DryRun {
 		if a.opt.Color {
+			debug.DryRunHeaderColorPrintf("[DRY RUN] AI Provider: %s\n", a.opt.AIProviderName)
+			debug.DryRunHeaderColorPrintf("[DRY RUN] AI Model: %s\n", modelName)
 			debug.DryRunHeaderColorPrintf("[DRY RUN] Generated commit message:\n")
 			debug.DryRunContentColorPrintf("\n%s\n", response.Answer)
 			debug.DryRunHeaderColorPrintf("\n[DRY RUN] To create the commit, run without --dry-run flag\n")
 		} else {
+			fmt.Fprintf(os.Stdout, "[DRY RUN] AI Provider: %s\n", a.opt.AIProviderName)
+			fmt.Fprintf(os.Stdout, "[DRY RUN] AI Model: %s\n", modelName)
 			fmt.Fprintf(os.Stdout, "[DRY RUN] Generated commit message:\n\n%s\n\n", response.Answer)
 			fmt.Fprintf(os.Stdout, "[DRY RUN] To create the commit, run without --dry-run flag\n")
 		}
