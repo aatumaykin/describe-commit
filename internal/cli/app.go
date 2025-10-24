@@ -147,7 +147,7 @@ func NewApp(name string) *App { //nolint:funlen
 			Default: app.opt.DryRun,
 		}
 		color = cmd.Flag[bool]{
-			Names:   []string{"--color", "col"},
+			Names:   []string{"color", "col"},
 			Usage:   "Enable colored output for messages and debug information",
 			EnvVars: []string{"COLOR"},
 			Default: app.opt.Color,
