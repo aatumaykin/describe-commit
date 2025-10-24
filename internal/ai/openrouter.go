@@ -59,7 +59,7 @@ func NewOpenRouter(apiKey, model string, opt ...OpenRouterOption) *OpenRouter {
 
 func (p *OpenRouter) Query( //nolint:dupl
 	ctx context.Context,
-	changes, commits string,
+	changes, commits, branch string,
 	opts ...Option,
 ) (*Response, error) {
 	var (
@@ -71,7 +71,7 @@ func (p *OpenRouter) Query( //nolint:dupl
 		opt.MaxOutputTokens = defaultMaxOutputTokens // set default value
 	}
 
-	req, rErr := p.newRequest(ctx, instructions, changes, commits, opt)
+	req, rErr := p.newRequest(ctx, instructions, changes, commits, branch, opt)
 	if rErr != nil {
 		return nil, rErr
 	}
@@ -108,7 +108,7 @@ func (p *OpenRouter) Query( //nolint:dupl
 // newRequest creates a new HTTP request for the OpenRouter API.
 func (p *OpenRouter) newRequest(
 	ctx context.Context,
-	instructions, changes, commits string,
+	instructions, changes, commits, branch string,
 	o options,
 ) (*http.Request, error) {
 	type message struct {
@@ -134,6 +134,7 @@ func (p *OpenRouter) newRequest(
 			{Role: "system", Content: instructions},
 			{Role: "user", Content: wrapChanges(changes)},
 			{Role: "user", Content: wrapCommits(commits)},
+			{Role: "user", Content: wrapBranch(branch)},
 		},
 	})
 	if jErr != nil {

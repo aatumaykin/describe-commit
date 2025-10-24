@@ -6,6 +6,7 @@ type (
 		ShortMessageOnly bool
 		EnableEmoji      bool
 		MaxOutputTokens  int64
+		PromptFile       string
 	}
 
 	// Option is a function that modifies the options.
@@ -29,3 +30,6 @@ func WithEmoji(on bool) Option { return func(o *options) { o.EnableEmoji = on } 
 
 // WithMaxOutputTokens sets the maximum number of tokens in the output.
 func WithMaxOutputTokens(max int64) Option { return func(o *options) { o.MaxOutputTokens = max } }
+
+// WithPromptFile sets the path to a custom prompt file.
+func WithPromptFile(filePath string) Option { return func(o *options) { o.PromptFile = filePath } }

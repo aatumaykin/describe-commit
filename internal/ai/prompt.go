@@ -2,12 +2,15 @@ package ai
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 )
 
 const (
-	gitDiffBegin, gitDiffEnd = "[---GIT-DIFF-BEGIN---]", "[---GIT-DIFF-END---]"
-	gitLogBegin, gitLogEnd   = "[---GIT-LOG-BEGIN---]", "[---GIT-LOG-END---]"
+	gitDiffBegin, gitDiffEnd     = "[---GIT-DIFF-BEGIN---]", "[---GIT-DIFF-END---]"
+	gitLogBegin, gitLogEnd       = "[---GIT-LOG-BEGIN---]", "[---GIT-LOG-END---]"
+	gitBranchBegin, gitBranchEnd = "[---GIT-BRANCH-BEGIN---]", "[---GIT-BRANCH-END---]"
 )
 
 // wrapChanges wraps the provided diff output between the specified markers (to help the AI identify the changes).
@@ -20,11 +23,53 @@ func wrapCommits(log string) string {
 	return fmt.Sprintf("%s\n%s\n%s", gitLogBegin, log, gitLogEnd)
 }
 
+// wrapBranch wraps the provided branch name between the specified markers (to help the AI identify the current branch).
+func wrapBranch(branch string) string {
+	return fmt.Sprintf("%s\n%s\n%s", gitBranchBegin, branch, gitBranchEnd)
+}
+
+// loadPromptFromFile loads a custom prompt from a file.
+func loadPromptFromFile(filePath string) (string, error) {
+	if filePath == "" {
+		return "", nil
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open prompt file: %w", err)
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to read prompt file: %w", err)
+	}
+
+	return string(content), nil
+}
+
 func GeneratePrompt(opts ...Option) string { //nolint:funlen
-	var (
-		opt = options{}.Apply(opts...)
-		b   strings.Builder
-	)
+	opt := options{}.Apply(opts...)
+
+	// If a custom prompt file is specified, load it
+	if opt.PromptFile != "" {
+		customPrompt, err := loadPromptFromFile(opt.PromptFile)
+		if err != nil {
+			// If there's an error loading the custom prompt, fall back to default
+			// This ensures the application doesn't crash if the file is missing
+			return generateDefaultPrompt(opt)
+		}
+		if customPrompt != "" {
+			return customPrompt
+		}
+	}
+
+	return generateDefaultPrompt(opt)
+}
+
+// generateDefaultPrompt generates the default prompt based on options.
+func generateDefaultPrompt(opt options) string {
+	var b strings.Builder
 
 	b.Grow(2560) //nolint:mnd // pre-allocate memory for the string builder
 
@@ -53,6 +98,10 @@ func GeneratePrompt(opts ...Option) string { //nolint:funlen
 		b.WriteString(fmt.Sprintf(
 			"2. The output of `git log`, presenting recent commit history, is wrapped between `%s` and `%s`.\n",
 			gitLogBegin, gitLogEnd,
+		))
+		b.WriteString(fmt.Sprintf(
+			"3. The current branch name is wrapped between `%s` and `%s`.\n",
+			gitBranchBegin, gitBranchEnd,
 		))
 		b.WriteRune('\n')
 	}
@@ -168,8 +217,10 @@ func GeneratePrompt(opts ...Option) string { //nolint:funlen
 		b.WriteString("- Analyze the provided `git log` output to better understand the codebase functionally, ")
 		b.WriteString("features, and recent changes, but do not include this information in the commit message ")
 		b.WriteString("or use it as a template.\n")
+		b.WriteString("- Consider the current branch name to understand the context and purpose of the changes ")
+		b.WriteString("(e.g., feature branch, bugfix branch, hotfix branch, etc.).\n")
 		b.WriteString("- Synthesize this information to generate a commit message that accurately reflects ")
-		b.WriteString("the current changes in the context of the project's history.\n")
+		b.WriteString("the current changes in the context of the project's history and branch purpose.\n")
 	}
 
 	return b.String()

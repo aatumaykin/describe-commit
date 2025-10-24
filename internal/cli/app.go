@@ -134,6 +134,24 @@ func NewApp(name string) *App { //nolint:funlen
 			EnvVars: []string{"ANTHROPIC_MODEL_NAME"},
 			Default: app.opt.Providers.Anthropic.ModelName,
 		}
+		promptFile = cmd.Flag[string]{
+			Names:   []string{"prompt-file", "p"},
+			Usage:   "Path to custom prompt file",
+			EnvVars: []string{"PROMPT_FILE"},
+			Default: app.opt.PromptFile,
+		}
+		dryRun = cmd.Flag[bool]{
+			Names:   []string{"dry-run", "d"},
+			Usage:   "Show what would be done without actually creating a commit",
+			EnvVars: []string{"DRY_RUN"},
+			Default: app.opt.DryRun,
+		}
+		color = cmd.Flag[bool]{
+			Names:   []string{"color", "col"},
+			Usage:   "Enable colored output for messages and debug information",
+			EnvVars: []string{"COLOR"},
+			Default: app.opt.Color,
+		}
 	)
 
 	app.cmd.Flags = []cmd.Flagger{
@@ -151,6 +169,9 @@ func NewApp(name string) *App { //nolint:funlen
 		&openRouterModelName,
 		&anthropicApiKey,
 		&anthropicModelName,
+		&promptFile,
+		&dryRun,
+		&color,
 	}
 
 	app.cmd.Action = func(ctx context.Context, c *cmd.Command, args []string) error {
@@ -171,6 +192,9 @@ func NewApp(name string) *App { //nolint:funlen
 			setIfFlagIsSet(&app.opt.EnableEmoji, enableEmoji)
 			setIfFlagIsSet(&app.opt.MaxOutputTokens, maxOutputTokens)
 			setIfFlagIsSet(&app.opt.AIProviderName, aiProviderName)
+			setIfFlagIsSet(&app.opt.PromptFile, promptFile)
+			setIfFlagIsSet(&app.opt.DryRun, dryRun)
+			setIfFlagIsSet(&app.opt.Color, color)
 			setIfFlagIsSet(&app.opt.Providers.Gemini.ApiKey, geminiApiKey)
 			setIfFlagIsSet(&app.opt.Providers.Gemini.ModelName, geminiModelName)
 			setIfFlagIsSet(&app.opt.Providers.OpenAI.ApiKey, openAIApiKey)
@@ -184,6 +208,9 @@ func NewApp(name string) *App { //nolint:funlen
 		if err := app.opt.Validate(); err != nil {
 			return fmt.Errorf("invalid options: %w", err)
 		}
+
+		// Set color mode for debug output
+		debug.SetColorEnabled(app.opt.Color)
 
 		return app.run(ctx, wd)
 	}
@@ -248,7 +275,7 @@ func (a *App) Help() string { return a.cmd.Help() }
 
 // run in the main logic of the application.
 func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funlen
-	debug.Printf("AI provider: %s", a.opt.AIProviderName)
+	debug.DebugHeaderColorPrintf("AI provider: %s", a.opt.AIProviderName)
 
 	var provider ai.Provider
 
@@ -277,15 +304,21 @@ func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funle
 		return fmt.Errorf("unsupported AI provider: %s", a.opt.AIProviderName)
 	}
 
-	debug.Printf("working directory: %s", workingDir)
+	debug.DebugHeaderColorPrintf("working directory: %s", workingDir)
 
 	var (
-		eg, _            = errgroup.New(ctx)
-		changes, commits string
+		eg, _                    = errgroup.New(ctx)
+		changes, commits, branch string
 	)
 
 	eg.Go(func(ctx context.Context) (err error) {
 		changes, err = git.Diff(ctx, workingDir)
+
+		return
+	})
+
+	eg.Go(func(ctx context.Context) (err error) {
+		branch, err = git.Branch(ctx, workingDir)
 
 		return
 	})
@@ -304,8 +337,12 @@ func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funle
 		return err
 	}
 
-	debug.Printf("changes:\n%s", changes)
-	debug.Printf("commits:\n%s", commits)
+	debug.DebugHeaderColorPrintf("changes:")
+	debug.DebugContentColorPrintf("%s", changes)
+	debug.DebugHeaderColorPrintf("commits:")
+	debug.DebugContentColorPrintf("%s", commits)
+	debug.DebugHeaderColorPrintf("branch:")
+	debug.DebugContentColorPrintf("%s", branch)
 
 	if changes == "" {
 		return fmt.Errorf("no changes found in %s (probably nothing staged; try `git add -A`)", workingDir)
@@ -315,19 +352,39 @@ func (a *App) run(ctx context.Context, workingDir string) error { //nolint:funle
 		ctx,
 		changes,
 		commits,
+		branch,
 		ai.WithShortMessageOnly(a.opt.ShortMessageOnly),
 		ai.WithEmoji(a.opt.EnableEmoji),
 		ai.WithMaxOutputTokens(a.opt.MaxOutputTokens),
+		ai.WithPromptFile(a.opt.PromptFile),
 	)
 	if respErr != nil {
 		return respErr
 	}
 
-	debug.Printf("prompt:\n%s", response.Prompt)
-	debug.Printf("answer:\n%s\n", response.Answer)
+	debug.DebugHeaderColorPrintf("prompt:")
+	debug.DebugContentColorPrintf("%s", response.Prompt)
+	debug.DebugHeaderColorPrintf("answer:")
+	debug.DebugContentColorPrintf("%s", response.Answer)
 
-	if _, err := fmt.Fprintln(os.Stdout, response.Answer); err != nil {
-		return err
+	if a.opt.DryRun {
+		if a.opt.Color {
+			debug.DryRunHeaderColorPrintf("[DRY RUN] Generated commit message:\n")
+			debug.DryRunContentColorPrintf("\n%s\n", response.Answer)
+			debug.DryRunHeaderColorPrintf("\n[DRY RUN] To create the commit, run without --dry-run flag\n")
+		} else {
+			fmt.Fprintf(os.Stdout, "[DRY RUN] Generated commit message:\n\n%s\n\n", response.Answer)
+			fmt.Fprintf(os.Stdout, "[DRY RUN] To create the commit, run without --dry-run flag\n")
+		}
+		return nil
+	}
+
+	if a.opt.Color {
+		debug.SuccessColorPrintf("%s\n", response.Answer)
+	} else {
+		if _, err := fmt.Fprintln(os.Stdout, response.Answer); err != nil {
+			return err
+		}
 	}
 
 	return nil

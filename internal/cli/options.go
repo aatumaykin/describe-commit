@@ -17,6 +17,9 @@ type options struct {
 	EnableEmoji         bool
 	MaxOutputTokens     int64
 	AIProviderName      string
+	PromptFile          string
+	DryRun              bool
+	Color               bool
 
 	Providers struct {
 		Gemini     struct{ ApiKey, ModelName string }
@@ -71,6 +74,8 @@ func (o *options) UpdateFromConfigFile(filePath []string) error {
 	setIfSourceNotNil(&o.EnableEmoji, cfg.EnableEmoji)
 	setIfSourceNotNil(&o.MaxOutputTokens, cfg.MaxOutputTokens)
 	setIfSourceNotNil(&o.AIProviderName, cfg.AIProviderName)
+	setIfSourceNotNil(&o.PromptFile, cfg.PromptFile)
+	setIfSourceNotNil(&o.Color, cfg.Color)
 
 	if sub := cfg.Gemini; sub != nil {
 		setIfSourceNotNil(&o.Providers.Gemini.ApiKey, sub.ApiKey)
@@ -145,11 +150,11 @@ func (o *options) Validate() error {
 
 	if o.AIProviderName == ai.ProviderAnthropic {
 		if o.Providers.Anthropic.ApiKey == "" {
-			return errors.New("Anthropic API key is required") //nolint:staticcheck
+			return errors.New("anthropic API key is required") //nolint:staticcheck
 		}
 
 		if o.Providers.Anthropic.ModelName == "" {
-			return errors.New("Anthropic model name is required") //nolint:staticcheck
+			return errors.New("anthropic model name is required") //nolint:staticcheck
 		}
 	}
 

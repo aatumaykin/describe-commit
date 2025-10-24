@@ -59,7 +59,7 @@ func NewAnthropic(apiKey, model string, opt ...AnthropicOption) *Anthropic {
 
 func (p *Anthropic) Query( //nolint:dupl
 	ctx context.Context,
-	changes, commits string,
+	changes, commits, branch string,
 	opts ...Option,
 ) (*Response, error) {
 	var (
@@ -71,7 +71,7 @@ func (p *Anthropic) Query( //nolint:dupl
 		opt.MaxOutputTokens = defaultMaxOutputTokens // set default value
 	}
 
-	req, rErr := p.newRequest(ctx, instructions, changes, commits, opt)
+	req, rErr := p.newRequest(ctx, instructions, changes, commits, branch, opt)
 	if rErr != nil {
 		return nil, rErr
 	}
@@ -108,7 +108,7 @@ func (p *Anthropic) Query( //nolint:dupl
 // newRequest creates a new HTTP request for the Anthropic API.
 func (p *Anthropic) newRequest(
 	ctx context.Context,
-	instructions, changes, commits string,
+	instructions, changes, commits, branch string,
 	o options,
 ) (*http.Request, error) {
 	type message struct {
@@ -135,6 +135,7 @@ func (p *Anthropic) newRequest(
 		Messages: []message{
 			{Role: "user", Content: wrapChanges(changes)},
 			{Role: "user", Content: wrapCommits(commits)},
+			{Role: "user", Content: wrapBranch(branch)},
 		},
 	})
 	if jErr != nil {

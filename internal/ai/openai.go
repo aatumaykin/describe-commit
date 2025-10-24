@@ -58,7 +58,7 @@ func NewOpenAI(apiKey, model string, opt ...OpenAIOption) *OpenAI {
 
 func (p *OpenAI) Query( //nolint:dupl
 	ctx context.Context,
-	changes, commits string,
+	changes, commits, branch string,
 	opts ...Option,
 ) (*Response, error) {
 	var (
@@ -70,7 +70,7 @@ func (p *OpenAI) Query( //nolint:dupl
 		opt.MaxOutputTokens = defaultMaxOutputTokens // set default value
 	}
 
-	req, rErr := p.newRequest(ctx, instructions, changes, commits, opt)
+	req, rErr := p.newRequest(ctx, instructions, changes, commits, branch, opt)
 	if rErr != nil {
 		return nil, rErr
 	}
@@ -107,7 +107,7 @@ func (p *OpenAI) Query( //nolint:dupl
 // newRequest creates a new HTTP request for the OpenAI API.
 func (p *OpenAI) newRequest(
 	ctx context.Context,
-	instructions, changes, commits string,
+	instructions, changes, commits, branch string,
 	o options,
 ) (*http.Request, error) {
 	type message struct {
@@ -135,6 +135,7 @@ func (p *OpenAI) newRequest(
 			{Role: "system", Content: instructions},
 			{Role: "user", Content: wrapChanges(changes)},
 			{Role: "user", Content: wrapCommits(commits)},
+			{Role: "user", Content: wrapBranch(branch)},
 		},
 	})
 	if jErr != nil {

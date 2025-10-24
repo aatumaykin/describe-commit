@@ -59,7 +59,7 @@ func NewGemini(apiKey, model string, opt ...GeminiOption) *Gemini {
 
 func (p *Gemini) Query( //nolint:dupl
 	ctx context.Context,
-	changes, commits string,
+	changes, commits, branch string,
 	opts ...Option,
 ) (*Response, error) {
 	var (
@@ -72,7 +72,7 @@ func (p *Gemini) Query( //nolint:dupl
 	}
 
 	// https://ai.google.dev/gemini-api/docs/text-generation?lang=rest
-	req, rErr := p.newRequest(ctx, instructions, changes, commits, opt)
+	req, rErr := p.newRequest(ctx, instructions, changes, commits, branch, opt)
 	if rErr != nil {
 		return nil, rErr
 	}
@@ -109,7 +109,7 @@ func (p *Gemini) Query( //nolint:dupl
 // newRequest creates a new HTTP request for the Gemini API.
 func (p *Gemini) newRequest( //nolint:funlen
 	ctx context.Context,
-	instructions, changes, commits string,
+	instructions, changes, commits, branch string,
 	o options,
 ) (*http.Request, error) {
 	type (
@@ -160,6 +160,7 @@ func (p *Gemini) newRequest( //nolint:funlen
 		Contents: []content{{Parts: []contentPart{
 			{Text: wrapChanges(changes)},
 			{Text: wrapCommits(commits)},
+			{Text: wrapBranch(branch)},
 		}}},
 	}
 

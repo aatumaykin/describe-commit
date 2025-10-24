@@ -1,7 +1,6 @@
 package debug
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"sync/atomic"
@@ -9,10 +8,15 @@ import (
 
 var Enabled atomic.Bool //nolint:gochecknoglobals
 
+// SetColorEnabled sets the color enabled state for debug output
+func SetColorEnabled(enabled bool) {
+	SetColorEnabledState(enabled)
+}
+
 // Printf is a helper function to print debug information to the stderr.
 func Printf(format string, args ...any) {
 	if Enabled.Load() {
-		_, _ = fmt.Fprintf(os.Stderr, fmt.Sprintf("# [debug] %s\n", format), args...)
+		DebugColorPrintf(format, args...)
 	}
 }
 

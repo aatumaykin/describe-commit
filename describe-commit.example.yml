@@ -25,6 +25,10 @@ enableEmoji: false
 # @type {integer}
 maxOutputTokens: 500
 
+# Path to custom prompt file (optional)
+# @type {string}
+#promptFile: /path/to/custom/prompt.md
+
 # AI provider to use
 # @enum {gemini|openai|openrouter|anthropic}
 aiProvider: gemini
